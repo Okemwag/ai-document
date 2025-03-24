@@ -1,119 +1,38 @@
-# apps/documents/views.py
-from rest_framework import viewsets, status, permissions
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-from .models import Document, DocumentVersion, Suggestion, Template
-from .serializers import (
-    DocumentSerializer, DocumentUploadSerializer, DocumentDetailSerializer,
-    DocumentVersionSerializer, SuggestionSerializer, SuggestionActionSerializer,
-    TemplateSerializer, DocumentExportSerializer
-)
-from .services.document_processor import DocumentProcessor
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from django.http import JsonResponse
+from .services.document_processor import create_document, get_document
+# from .tasks import improve_document
 
-class DocumentViewSet(viewsets.ModelViewSet):
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_document(request):
     """
-    ViewSet for managing documents.
+    Handle document upload.
     """
-    permission_classes = [permissions.IsAuthenticated]
-    
-    def get_queryset(self):
-        return Document.objects.filter(user=self.request.user)
-    
-    def get_serializer_class(self):
-        if self.action == 'create':
-            return DocumentUploadSerializer
-        elif self.action == 'retrieve':
-            return DocumentDetailSerializer
-        return DocumentSerializer
-    
-    def perform_create(self, serializer):
-        document = serializer.save()
-        # Start async task to process the document
-        DocumentProcessor.process_document(document.id)
-    
-    @action(detail=True, methods=['post'])
-    def process(self, request, pk=None):
-        """
-        Process/re-process a document to generate improvement suggestions.
-        """
-        document = self.get_object()
-        DocumentProcessor.process_document(document.id)
-        return Response({'status': 'Processing started'}, status=status.HTTP_202_ACCEPTED)
-    
-    @action(detail=True, methods=['post'])
-    def export(self, request, pk=None):
-        """
-        Export document with improvements to a template.
-        """
-        document = self.get_object()
-        serializer = DocumentExportSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        template_id = serializer.validated_data.get('template_id')
-        version_id = serializer.validated_data.get('version_id')
-        
-        # Get template (use default if not specified)
-        if template_id:
-            template = get_object_or_404(Template, id=template_id)
-        else:
-            template = Template.objects.filter(is_default=True).first()
-            if not template:
-                return Response(
-                    {'error': 'No template specified and no default template found.'}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        # Get document version
-        if version_id:
-            version = get_object_or_404(DocumentVersion, id=version_id, document=document)
-        else:
-            # Use latest version
-            version = document.versions.order_by('-created_at').first()
-            if not version:
-                return Response(
-                    {'error': 'No document versions available.'}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        # Generate exported document
-        try:
-            exported_file_url = DocumentProcessor.export_document(document.id, version.id, template.id)
-            return Response({'url': exported_file_url}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    file = request.FILES.get('file')
+    if not file:
+        return JsonResponse({'error': 'No file uploaded'}, status=400)
 
-class SuggestionViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    ViewSet for viewing and managing suggestions.
-    """
-    serializer_class = SuggestionSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    
-    def get_queryset(self):
-        return Suggestion.objects.filter(document__user=self.request.user)
-    
-    @action(detail=True, methods=['post'])
-    def action(self, request, pk=None):
-        """
-        Accept or reject a suggestion.
-        """
-        suggestion = self.get_object()
-        serializer = SuggestionActionSerializer(suggestion, data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        
-        # If accepting suggestion, update the latest document version
-        if serializer.validated_data['is_accepted']:
-            DocumentProcessor.apply_suggestion(suggestion.id)
-        
-        return Response(serializer.data)
+    try:
+        document = create_document(request.user, file)
+        # improve_document.delay(document.id)  # Commented out task function
+        return JsonResponse({'message': 'File uploaded successfully', 'document_id': document.id})
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
 
-class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_document_view(request, id):
     """
-    ViewSet for viewing available templates.
+    Get original and improved document.
     """
-    queryset = Template.objects.all()
-    serializer_class = TemplateSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
+    document = get_document(request.user, id)
+    if document:
+        return JsonResponse({
+            'title': document.title,
+            'original_content': document.original_content,
+            'improved_content': document.improved_content,
+            'status': document.status
+        })
+    return JsonResponse({'error': 'Document not found'}, status=404)

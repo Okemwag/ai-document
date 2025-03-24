@@ -24,6 +24,7 @@ pika = "*"
 drf-yasg = "*"
 pypdf2 = "*"
 django-cors-headers = "*"
+torch = "*"
 
 [dev-packages]
 
