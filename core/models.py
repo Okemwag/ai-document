@@ -12,12 +12,8 @@ class DocumentVersion(models.Model):
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='documents', null=True, blank=True)
-    
-    # Original document
     original_file = models.FileField(upload_to='uploads/', blank=True, null=True)
     original_text = models.TextField(blank=True, null=True)
-    
-    # Improved document
     improved_file = models.FileField(upload_to='improved_documents/', blank=True, null=True)
     improved_text = models.TextField(blank=True, null=True)
     
@@ -26,7 +22,6 @@ class DocumentVersion(models.Model):
     style_suggestions = models.JSONField(blank=True, null=True)
     clarity_suggestions = models.JSONField(blank=True, null=True)
     
-    # Tracking
     uploaded_at = models.DateTimeField(auto_now_add=True)
     processed_at = models.DateTimeField(null=True, blank=True)
     

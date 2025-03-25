@@ -1,12 +1,14 @@
-import spacy
-import nltk
-from typing import Dict, List, Any
-import language_tool_python
-from docx import Document
-import re
 import os
+import re
+from typing import Any, Dict, List
+
 import chardet
+import language_tool_python
+import nltk
 import PyPDF2
+import spacy
+from docx import Document
+
 
 class DocumentProcessor:
     def __init__(self):

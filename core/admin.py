@@ -1,5 +1,7 @@
 from django.contrib import admin
+
 from .models import DocumentVersion
+
 
 @admin.register(DocumentVersion)
 class DocumentVersionAdmin(admin.ModelAdmin):

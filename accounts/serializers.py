@@ -93,7 +93,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     profile_picture = serializers.SerializerMethodField()
 
     def get_profile_picture(self, obj):
-        return obj.picture
+        return obj.metadata.get("profile_picture", None)
 
     class Meta:
         model = Profile
@@ -105,6 +105,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "created",
             "modified",
         ]
+
 
 class GoogleCallbackSerializer(serializers.Serializer):
     code = serializers.CharField(required=False, write_only=True)

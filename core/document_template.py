@@ -1,6 +1,7 @@
 from docx import Document
-from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from docx.shared import Pt, RGBColor
+
 
 def apply_organization_template(text: str, output_path: str) -> str:
     """

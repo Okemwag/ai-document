@@ -1,21 +1,19 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-
-from .models import DocumentVersion
-from .serializers import (
-    DocumentVersionSerializer, 
-    DocumentUploadSerializer, 
-    DocumentImprovementSerializer
-)
-from .services.document_processor import DocumentProcessor
-from .document_template import apply_organization_template
-
 import os
+
+from celery import shared_task
 from django.conf import settings
 from django.utils import timezone
-from celery import shared_task
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+from .document_template import apply_organization_template
+from .models import DocumentVersion
+from .serializers import (DocumentImprovementSerializer,
+                          DocumentUploadSerializer, DocumentVersionSerializer)
+from .services.document_processor import DocumentProcessor
+
 
 class DocumentViewSet(viewsets.ModelViewSet):
     """
