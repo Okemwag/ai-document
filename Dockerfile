@@ -1,35 +1,31 @@
-FROM python:3.11-alpine
+FROM python:3.13  
 
-# environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+# Create the app directory
+RUN mkdir /app
 
-# Set work directory
+# Set the working directory inside the container
 WORKDIR /app
 
-# Install system dependencies required for building Python packages
-RUN apk add --no-cache \
-    gcc \
-    g++ \
-    python3-dev \
-    musl-dev \
-    linux-headers \
-    libffi-dev \
-    openssl-dev \
-    build-base
+# Set environment variables 
+# Prevents Python from writing pyc files to disk
+ENV PYTHONDONTWRITEBYTECODE=1
+#Prevents Python from buffering stdout and stderr
+ENV PYTHONUNBUFFERED=1 
 
 # Upgrade pip
-RUN pip install --upgrade pip
+RUN pip install --upgrade pip 
 
-# Install Python dependencies
-COPY requirements.txt .
+# Copy the Django project  and install dependencies
+COPY requirements.txt  /app/
+
+# run this command to install all dependencies 
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project
-COPY . .
+# Copy the Django project to the container
+COPY . /app/
 
-# Expose port
+# Expose the Django port
 EXPOSE 8000
 
-# Start the app
+# Run Django’s development server
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

@@ -1,14 +1,19 @@
 import os
 import re
 from typing import Any, Dict, List
-
 import chardet
 import language_tool_python
 import nltk
-import PyPDF2
 import spacy
+from textblob import TextBlob
 from docx import Document
-
+from transformers import pipeline
+from ..utils import (
+    _read_docx,
+    _read_pdf,
+    _read_rtf,
+    _read_txt
+)
 
 class DocumentProcessor:
     def __init__(self):
@@ -18,69 +23,24 @@ class DocumentProcessor:
         # Grammar checker
         self.grammar_tool = language_tool_python.LanguageTool('en-US')
         
+        # Paraphraser
+        self.paraphrase_model = pipeline("text2text-generation", model="t5-small")
+        
         # Download necessary NLTK resources
         nltk.download('punkt', quiet=True)
         nltk.download('averaged_perceptron_tagger', quiet=True)
-
-    def detect_encoding(self, file_path: str) -> str:
-        """
-        Detect the encoding of a file
-        """
-        with open(file_path, 'rb') as file:
-            raw_data = file.read()
-            result = chardet.detect(raw_data)
-            return result['encoding'] or 'utf-8'
-
-    def extract_text_from_file(self, file_path: str) -> str:
-        """
-        Extract text from various file types
-        """
-        file_extension = os.path.splitext(file_path)[1].lower()
         
-        # Detect file encoding
-        encoding = self.detect_encoding(file_path)
-        
-        if file_extension == '.docx':
-            return self._extract_text_from_docx(file_path)
-        elif file_extension == '.pdf':
-            return self._extract_text_from_pdf(file_path)
-        elif file_extension == '.txt':
-            return self._extract_text_from_txt(file_path, encoding)
-        else:
-            raise ValueError(f"Unsupported file type: {file_extension}")
 
-    def _extract_text_from_docx(self, docx_path: str) -> str:
-        """
-        Extract text from a Word document
-        """
-        doc = Document(docx_path)
-        return '\n'.join([paragraph.text for paragraph in doc.paragraphs])
 
-    def _extract_text_from_pdf(self, pdf_path: str) -> str:
-        """
-        Extract text from a PDF document
-        """
-        text_content = []
-        with open(pdf_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
-            
-            # Extract text from all pages
-            for page in pdf_reader.pages:
-                text_content.append(page.extract_text())
-        
-        return '\n'.join(text_content)
+    def correct_spelling(self, text):
+        """Corrects spelling using TextBlob."""
+        return str(TextBlob(text).correct())
 
-    def _extract_text_from_txt(self, txt_path: str, encoding: str = 'utf-8') -> str:
-        """
-        Extract text from a plain text file
-        """
-        try:
-            with open(txt_path, 'r', encoding=encoding) as file:
-                return file.read()
-        except UnicodeDecodeError:
-            # Fallback to utf-8 if specified encoding fails
-            with open(txt_path, 'r', encoding='utf-8') as file:
-                return file.read()
+    def paraphrase_text(self, text):
+        """Paraphrases text using a T5 transformer model."""
+        response = self.paraphrase_model(f"paraphrase: {text}", max_length=100, do_sample=True)
+        return response[0]['generated_text']
+
 
     def analyze_grammar(self, text: str) -> Dict[str, Any]:
         """

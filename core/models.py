@@ -1,31 +1,19 @@
 import uuid
-
 from django.contrib.auth import get_user_model
 from django.db import models
 
 User = get_user_model()
 
-
-class DocumentVersion(models.Model):
+class Document(models.Model):
     """
-    Model to store different versions of a document
+    Main document model storing metadata and ownership
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='documents', null=True, blank=True)
-    original_file = models.FileField(upload_to='uploads/', blank=True, null=True)
-    original_text = models.TextField(blank=True, null=True)
-    improved_file = models.FileField(upload_to='improved_documents/', blank=True, null=True)
-    improved_text = models.TextField(blank=True, null=True)
-    
-    # Improvement metadata
-    grammar_suggestions = models.JSONField(blank=True, null=True)
-    style_suggestions = models.JSONField(blank=True, null=True)
-    clarity_suggestions = models.JSONField(blank=True, null=True)
-    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='documents')
+    title = models.CharField(max_length=255, blank=True)
+    original_file = models.FileField(upload_to='uploads/')
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    processed_at = models.DateTimeField(null=True, blank=True)
     
-    # Processing status
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('processing', 'Processing'),
@@ -34,10 +22,40 @@ class DocumentVersion(models.Model):
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     
-    def __str__(self):
-        return f"Document {self.id} - {self.uploaded_at}"
-    
     class Meta:
         ordering = ['-uploaded_at']
+        verbose_name = 'Document'
+        verbose_name_plural = 'Documents'
+    
+    def __str__(self):
+        return f"{self.title or 'Untitled'} - {self.get_status_display()}"
+
+class DocumentVersion(models.Model):
+    """
+    Model to store different versions of a document with improvements
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='versions')
+    
+    VERSION_TYPES = [
+        ('original', 'Original'),
+        ('improved', 'Improved'),
+        ('exported', 'Exported')
+    ]
+    version_type = models.CharField(max_length=20, choices=VERSION_TYPES)
+    
+    content = models.TextField()
+    file = models.FileField(upload_to='document_versions/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Improvement metadata
+    suggestions = models.JSONField(default=dict, blank=True)  # Stores all types of suggestions
+    
+    class Meta:
+        ordering = ['-created_at']
         verbose_name = 'Document Version'
         verbose_name_plural = 'Document Versions'
+        unique_together = ['document', 'version_type']  
+    
+    def __str__(self):
+        return f"{self.document} - {self.get_version_type_display()}"
