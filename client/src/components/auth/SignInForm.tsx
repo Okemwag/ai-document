@@ -49,7 +49,8 @@ const SignInForm = () => {
         // access token
         const accessToken = response.data.token.access;
         console.log(accessToken);
-        localStorage.setItem("accessToken", accessToken);
+        document.cookie = `authToken=${accessToken}; path=/`
+        localStorage.setItem("authToken", accessToken);
         navigate.push("/dashboard");
       }
     } catch (error) {

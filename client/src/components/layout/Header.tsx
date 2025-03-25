@@ -8,12 +8,15 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
 
+  const authTkn = localStorage.getItem("authToken")
   // Fake authentication
-  const isAuthenticated = false;
+  const isAuthenticated = authTkn;
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
+
+  
 
   return (
     <header className="bg-white shadow-md">

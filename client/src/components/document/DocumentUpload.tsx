@@ -72,13 +72,13 @@ export default function DocumentUpload() {
     formData.append("file", file);
 
     // Get auth token from local storage
-    const authToken = localStorage.getItem("accessToken");
+    const resourceAuthToken = localStorage.getItem("authToken");
     console.log(formData);
     try {
-      const response = await fetch(`${DEV_API_URL}/api/documents/documents/upload/`, {
+      const response = await fetch(`${DEV_API_URL}/api/documents/upload/`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${authToken}`,
+          Authorization: `Bearer ${resourceAuthToken}`,
         },
         body: formData,
       });
