@@ -36,7 +36,6 @@ export default function ComparisonView({ documentId }: ComparisonViewProps) {
   const fetchDocument = async () => {
     const DEV_API_URL = process.env.NEXT_PUBLIC_DEV_BASE_API_URL;   
     try {
-      // Replace with your actual API endpoint
       const response = await fetch(`/api/documents/${documentId}`);
 
       if (!response.ok) {
@@ -91,7 +90,6 @@ export default function ComparisonView({ documentId }: ComparisonViewProps) {
 
   const handleSuggestionReject = async (suggestionId: any) => {
     try {
-      // Replace with your actual API endpoint
       const response = await fetch(
         `/api/documents/${documentId}/suggestions/${suggestionId}/reject`,
         {
@@ -117,7 +115,7 @@ export default function ComparisonView({ documentId }: ComparisonViewProps) {
 
   const handleExport = async () => {
     try {
-      // Replace with your actual API endpoint
+    
       const response = await fetch(`/api/documents/${documentId}/export`, {
         method: "POST",
       });
