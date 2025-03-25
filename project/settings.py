@@ -3,8 +3,9 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-from django.utils import timezone
 from pathlib import Path
+
+from django.utils import timezone
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -31,6 +32,7 @@ DJANGO_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sites",
 ]
 
 LOCAL_APPS = [

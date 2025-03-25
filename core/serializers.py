@@ -1,99 +1,82 @@
+import os
+import PyPDF2
+from docx import Document
 from rest_framework import serializers
-from .models import Document, DocumentContent, DocumentVersion, Suggestion, Template
-
-class DocumentSerializer(serializers.ModelSerializer):
-    file_type_display = serializers.CharField(source='get_file_type_display', read_only=True)
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
-    
-    class Meta:
-        model = Document
-        fields = ['id', 'title', 'original_file', 'file_type', 'file_type_display', 
-                  'status', 'status_display', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'file_type', 'status', 'created_at', 'updated_at', 'file_type_display', 'status_display']
-
-class DocumentUploadSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Document
-        fields = ['title', 'original_file']
-    
-    def validate_original_file(self, value):
-        # Get file extension
-        file_extension = value.name.split('.')[-1].lower()
-        
-        # Check if the file type is supported
-        if file_extension not in ['txt', 'docx', 'pdf']:
-            raise serializers.ValidationError("Unsupported file type. Supported types are: txt, docx, pdf")
-        
-        # Check file size (limit to 10MB)
-        if value.size > 10 * 1024 * 1024:
-            raise serializers.ValidationError("File too large. Size should not exceed 10MB.")
-        
-        return value
-    
-    def create(self, validated_data):
-        file_extension = validated_data['original_file'].name.split('.')[-1].lower()
-        validated_data['file_type'] = file_extension
-        validated_data['user'] = self.context['request'].user
-        return super().create(validated_data)
-
-class DocumentContentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DocumentContent
-        fields = ['original_content']
+from .models import DocumentVersion
 
 class DocumentVersionSerializer(serializers.ModelSerializer):
+    """
+    Serializer for DocumentVersion model
+    """
     class Meta:
         model = DocumentVersion
-        fields = ['id', 'content', 'version_number', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        fields = [
+            'id', 
+            'user', 
+            'original_file', 
+            'original_text',
+            'improved_file', 
+            'improved_text',
+            'grammar_suggestions', 
+            'style_suggestions', 
+            'clarity_suggestions',
+            'uploaded_at', 
+            'processed_at', 
+            'status'
+        ]
+        read_only_fields = ['id', 'processed_at', 'status']
 
-class SuggestionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Suggestion
-        fields = ['id', 'original_text', 'suggested_text', 'improvement_type', 
-                  'start_position', 'end_position', 'is_accepted', 'created_at']
-        read_only_fields = ['id', 'created_at']
-
-class SuggestionActionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Suggestion
-        fields = ['id', 'is_accepted']
-        read_only_fields = ['id']
-
-class TemplateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Template
-        fields = ['id', 'name', 'description', 'template_file', 'is_default', 'created_at']
-        read_only_fields = ['id', 'created_at']
-
-class DocumentDetailSerializer(serializers.ModelSerializer):
-    content = DocumentContentSerializer(read_only=True)
-    versions = DocumentVersionSerializer(many=True, read_only=True)
-    suggestions = SuggestionSerializer(many=True, read_only=True)
+class DocumentUploadSerializer(serializers.Serializer):
+    """
+    Serializer for document upload
+    """
+    file = serializers.FileField()
     
-    class Meta:
-        model = Document
-        fields = ['id', 'title', 'original_file', 'file_type', 'status', 
-                  'created_at', 'updated_at', 'content', 'versions', 'suggestions']
-        read_only_fields = ['id', 'file_type', 'status', 'created_at', 'updated_at']
+    def validate_file(self, value):
+        """
+        Validate uploaded file
+        """
+        # Validate file type
+        allowed_extensions = ['.docx', '.txt', '.pdf']
+        ext = os.path.splitext(value.name)[1].lower()
+        if ext not in allowed_extensions:
+            raise serializers.ValidationError(
+                f"Unsupported file type. Allowed types: {', '.join(allowed_extensions)}"
+            )
+        
+        # Validate file size (e.g., max 10MB)
+        if value.size > 10 * 1024 * 1024:
+            raise serializers.ValidationError("File size should not exceed 10MB")
+        
+        # Additional file type checks
+        try:
+            # Try to read the file to ensure it's not corrupted
+            if ext == '.docx':
+                doc = Document(value)
+            elif ext == '.pdf':
+                PyPDF2.PdfReader(value)
+            elif ext == '.txt':
+                # For txt, we'll just try to decode
+                value.read().decode('utf-8')
+        except Exception as e:
+            raise serializers.ValidationError(f"Invalid or corrupted {ext} file: {str(e)}")
+        
+        # Reset file pointer
+        value.seek(0)
+        
+        return value
 
-class DocumentExportSerializer(serializers.Serializer):
-    template_id = serializers.UUIDField(required=False)
-    version_id = serializers.UUIDField(required=False)
-    
-    def validate(self, attrs):
-        template_id = attrs.get('template_id')
-        if template_id:
-            try:
-                Template.objects.get(id=template_id)
-            except Template.DoesNotExist:
-                raise serializers.ValidationError({"template_id": "Template not found."})
-        
-        version_id = attrs.get('version_id')
-        if version_id:
-            try:
-                DocumentVersion.objects.get(id=version_id)
-            except DocumentVersion.DoesNotExist:
-                raise serializers.ValidationError({"version_id": "Document version not found."})
-        
-        return attrs
+class DocumentImprovementSerializer(serializers.Serializer):
+    """
+    Serializer for document improvement request
+    """
+    improvement_level = serializers.ChoiceField(
+        choices=['basic', 'advanced', 'professional'], 
+        default='basic'
+    )
+    focus_areas = serializers.ListField(
+        child=serializers.ChoiceField(
+            choices=['grammar', 'style', 'clarity', 'vocabulary']
+        ),
+        required=False
+    )

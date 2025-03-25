@@ -1,7 +1,13 @@
-from django.urls import path
-from .views import upload_document, get_document_view
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 
+from .views import DocumentViewSet
+
+# Create a router and register the viewset
+router = DefaultRouter()
+router.register(r'documents', DocumentViewSet, basename='document')
+
+# Define URL patterns
 urlpatterns = [
-    path('upload/', upload_document, name='upload_document'),
-    path('documents/<uuid:id>/', get_document_view, name='get_document'),
+    path('', include(router.urls)),
 ]

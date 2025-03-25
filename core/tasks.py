@@ -1,5 +1,6 @@
 from celery import shared_task
 from transformers import pipeline
+
 from .models import Document
 from .services.document_processor import update_document_status
 

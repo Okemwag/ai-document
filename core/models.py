@@ -1,31 +1,48 @@
 import uuid
-from django.db import models
+
 from django.contrib.auth import get_user_model
+from django.db import models
 
 User = get_user_model()
 
-class Document(models.Model):
+
+class DocumentVersion(models.Model):
     """
-    Model to store information about uploaded documents.
+    Model to store different versions of a document
     """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='documents', null=True, blank=True)
+    
+    # Original document
+    original_file = models.FileField(upload_to='uploads/', blank=True, null=True)
+    original_text = models.TextField(blank=True, null=True)
+    
+    # Improved document
+    improved_file = models.FileField(upload_to='improved_documents/', blank=True, null=True)
+    improved_text = models.TextField(blank=True, null=True)
+    
+    # Improvement metadata
+    grammar_suggestions = models.JSONField(blank=True, null=True)
+    style_suggestions = models.JSONField(blank=True, null=True)
+    clarity_suggestions = models.JSONField(blank=True, null=True)
+    
+    # Tracking
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    
+    # Processing status
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('processing', 'Processing'),
         ('completed', 'Completed'),
-        ('failed', 'Failed'),
+        ('failed', 'Failed')
     ]
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='documents')
-    title = models.CharField(max_length=255)
-    original_content = models.TextField()
-    improved_content = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
-        return f"{self.title} ({self.status})"
+        return f"Document {self.id} - {self.uploaded_at}"
     
     class Meta:
-        ordering = ['-created_at']
+        ordering = ['-uploaded_at']
+        verbose_name = 'Document Version'
+        verbose_name_plural = 'Document Versions'

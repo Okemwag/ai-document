@@ -1,38 +1,153 @@
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.http import JsonResponse
-from .services.document_processor import create_document, get_document
-# from .tasks import improve_document
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def upload_document(request):
-    """
-    Handle document upload.
-    """
-    file = request.FILES.get('file')
-    if not file:
-        return JsonResponse({'error': 'No file uploaded'}, status=400)
+from .models import DocumentVersion
+from .serializers import (
+    DocumentVersionSerializer, 
+    DocumentUploadSerializer, 
+    DocumentImprovementSerializer
+)
+from .services.document_processor import DocumentProcessor
+from .document_template import apply_organization_template
 
+import os
+from django.conf import settings
+from django.utils import timezone
+from celery import shared_task
+
+class DocumentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for handling document upload, processing, and improvements
+    """
+    queryset = DocumentVersion.objects.all()
+    serializer_class = DocumentVersionSerializer
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['POST'], serializer_class=DocumentUploadSerializer)
+    def upload(self, request):
+        """
+        Handle document upload
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        uploaded_file = serializer.validated_data['file']
+        
+        # Create document version
+        doc_version = DocumentVersion.objects.create(
+            user=request.user,
+            original_file=uploaded_file,
+            status='processing'
+        )
+        
+        # Trigger async processing
+        process_document.delay(doc_version.id)
+        
+        return Response({
+            'document_id': doc_version.id,
+            'status': 'Processing started'
+        }, status=status.HTTP_202_ACCEPTED)
+
+    @action(detail=True, methods=['POST'], serializer_class=DocumentImprovementSerializer)
+    def improve(self, request, pk=None):
+        """
+        Apply improvements to a specific document
+        """
+        document = self.get_object()
+        
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Trigger improvement processing
+        improve_document.delay(
+            document_id=pk, 
+            improvement_level=serializer.validated_data.get('improvement_level'),
+            focus_areas=serializer.validated_data.get('focus_areas', [])
+        )
+        
+        return Response({
+            'document_id': pk,
+            'status': 'Improvement processing started'
+        }, status=status.HTTP_202_ACCEPTED)
+
+@shared_task
+def process_document(document_id):
+    """
+    Celery task to process uploaded document
+    """
     try:
-        document = create_document(request.user, file)
-        # improve_document.delay(document.id)  # Commented out task function
-        return JsonResponse({'message': 'File uploaded successfully', 'document_id': document.id})
-    except ValueError as e:
-        return JsonResponse({'error': str(e)}, status=400)
+        # Retrieve document
+        doc_version = DocumentVersion.objects.get(id=document_id)
+        
+        # Initialize processor
+        processor = DocumentProcessor()
+        
+        # Extract text from uploaded file
+        doc_version.original_text = processor.extract_text_from_file(
+            os.path.join(settings.MEDIA_ROOT, str(doc_version.original_file))
+        )
+        
+        # Analyze document
+        analysis_results = processor.suggest_improvements(doc_version.original_text)
+        
+        # Store suggestions
+        doc_version.grammar_suggestions = analysis_results.get('grammar')
+        doc_version.style_suggestions = analysis_results.get('style_suggestions')
+        doc_version.clarity_suggestions = analysis_results.get('readability')
+        
+        doc_version.status = 'completed'
+        doc_version.save()
+        
+        return str(doc_version.id)
+    
+    except Exception as e:
+        # Update status to failed
+        doc_version.status = 'failed'
+        doc_version.save()
+        raise
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_document_view(request, id):
+@shared_task
+def improve_document(document_id, improvement_level='basic', focus_areas=None):
     """
-    Get original and improved document.
+    Celery task to improve document
     """
-    document = get_document(request.user, id)
-    if document:
-        return JsonResponse({
-            'title': document.title,
-            'original_content': document.original_content,
-            'improved_content': document.improved_content,
-            'status': document.status
-        })
-    return JsonResponse({'error': 'Document not found'}, status=404)
+    try:
+        # Retrieve document
+        doc_version = DocumentVersion.objects.get(id=document_id)
+        
+        # Initialize processor
+        processor = DocumentProcessor()
+        
+        # Get suggestions from previous processing
+        suggestions = {
+            'grammar': doc_version.grammar_suggestions,
+            'style_suggestions': doc_version.style_suggestions
+        }
+        
+        # Apply improvements
+        improved_text = processor.apply_improvements(
+            doc_version.original_text, 
+            suggestions
+        )
+        
+        # Save improved text
+        doc_version.improved_text = improved_text
+        
+        # Apply organization template
+        improved_file_path = apply_organization_template(
+            improved_text, 
+            f'{settings.MEDIA_ROOT}/improved_documents/{doc_version.id}.docx'
+        )
+        
+        # Update document with improved file
+        doc_version.improved_file = improved_file_path
+        doc_version.processed_at = timezone.now()
+        doc_version.save()
+        
+        return str(doc_version.id)
+    
+    except Exception as e:
+        # Log error
+        raise
