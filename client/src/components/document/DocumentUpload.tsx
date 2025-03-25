@@ -75,7 +75,7 @@ export default function DocumentUpload() {
     const resourceAuthToken = localStorage.getItem("authToken");
     console.log(formData);
     try {
-      const response = await fetch(`${DEV_API_URL}/api/documents/upload/`, {
+      const response = await fetch(`${DEV_API_URL}/api/upload/`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${resourceAuthToken}`,
