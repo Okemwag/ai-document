@@ -1,151 +1,156 @@
-import os
-
-from celery import shared_task
-from django.conf import settings
-from django.utils import timezone
-from rest_framework import status, viewsets
-from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework import generics, status
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import get_object_or_404
+from .models import Document, DocumentVersion
+from .serializers import (
+    DocumentSerializer,
+    DocumentVersionSerializer,
+    DocumentImprovementSerializer,
+    DocumentExportSerializer
+)
+from .services import DocumentProcessingService
+from .tasks import process_document
+from .exporter import DocumentExporter
 
-from .document_template import apply_organization_template
-from .models import DocumentVersion
-from .serializers import (DocumentImprovementSerializer,
-                          DocumentUploadSerializer, DocumentVersionSerializer)
-from .services.document_processor import DocumentProcessor
-
-
-class DocumentViewSet(viewsets.ModelViewSet):
+class DocumentUploadView(generics.CreateAPIView):
     """
-    ViewSet for handling document upload, processing, and improvements
+    POST /upload
+    Upload a document and initiate processing
+    """
+    queryset = Document.objects.all()
+    serializer_class = DocumentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        document = serializer.save(user=self.request.user)
+        
+        # Process synchronously for small files (<1MB), async for larger
+        if document.original_file.size < 1024 * 1024:
+            service = DocumentProcessingService()
+            result = service.process_document(document.original_file.path)
+            if result['status'] == 'success':
+                DocumentVersion.objects.create(
+                    document=document,
+                    version_type='improved',
+                    content=result['paraphrased_text'],
+                    suggestions=result['improvements']
+                )
+                document.status = 'completed'
+                document.save()
+        else:
+            process_document.delay(document.id)
+            document.status = 'processing'
+            document.save()
+
+        return document
+
+class DocumentRetrieveView(generics.RetrieveAPIView):
+    """
+    GET /documents/{id}
+    Retrieve document with all versions
+    """
+    queryset = Document.objects.prefetch_related('versions')
+    serializer_class = DocumentSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'id'
+
+    def get_object(self):
+        obj = get_object_or_404(self.get_queryset(), id=self.kwargs['id'])
+        if obj.user != self.request.user:
+            self.permission_denied(self.request)
+        return obj
+
+class DocumentImproveView(APIView):
+    """
+    POST /documents/{id}/improve
+    Request additional improvements to a document
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        document = get_object_or_404(
+            Document.objects.filter(user=request.user),
+            id=self.kwargs['id']
+        )
+        
+        serializer = DocumentImprovementSerializer(
+            data=request.data,
+            context={'document': document}
+        )
+        serializer.is_valid(raise_exception=True)
+
+        # Initiate reprocessing
+        process_document_task.delay(
+            document.id,
+            improvement_types=serializer.validated_data.get('improvement_types'),
+            aggressiveness=serializer.validated_data.get('aggressiveness', 3)
+        )
+
+        return Response(
+            {'status': 'processing_started', 'document_id': str(document.id)},
+            status=status.HTTP_202_ACCEPTED
+        )
+
+class DocumentExportView(APIView):
+    """
+    POST /documents/{id}/export
+    Export a document version with template
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        document = get_object_or_404(
+            Document.objects.filter(user=request.user),
+            id=self.kwargs['id']
+        )
+        
+        serializer = DocumentExportSerializer(
+            data=request.data,
+            context={'document': document}
+        )
+        serializer.is_valid(raise_exception=True)
+
+        # Generate export file
+        exporter = DocumentExporter(**serializer.get_export_config())
+        export_file = exporter.generate()
+
+        return Response({
+            'download_url': export_file.url,
+            'expires_at': export_file.expiry.isoformat(),
+            'format': serializer.validated_data['format']
+        })
+
+class DocumentStatusView(APIView):
+    """
+    GET /documents/{id}/status
+    Check processing status
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        document = get_object_or_404(
+            Document.objects.filter(user=request.user),
+            id=self.kwargs['id']
+        )
+        
+        return Response({
+            'document_id': str(document.id),
+            'status': document.status,
+            'last_updated': document.updated_at,
+            'versions': [
+                {'type': v.version_type, 'created_at': v.created_at}
+                for v in document.versions.all()
+            ]
+        })
+    
+class DocumentVersionRetrieveView(generics.RetrieveAPIView):
+    """
+    GET /documents/{id}/versions/{version_id}
+    Retrieve a specific document version
     """
     queryset = DocumentVersion.objects.all()
     serializer_class = DocumentVersionSerializer
     permission_classes = [IsAuthenticated]
-
-    @action(detail=False, methods=['POST'], serializer_class=DocumentUploadSerializer)
-    def upload(self, request):
-        """
-        Handle document upload
-        """
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        uploaded_file = serializer.validated_data['file']
-        
-        # Create document version
-        doc_version = DocumentVersion.objects.create(
-            user=request.user,
-            original_file=uploaded_file,
-            status='processing'
-        )
-        
-        # Trigger async processing
-        process_document.delay(doc_version.id)
-        
-        return Response({
-            'document_id': doc_version.id,
-            'status': 'Processing started'
-        }, status=status.HTTP_202_ACCEPTED)
-
-    @action(detail=True, methods=['POST'], serializer_class=DocumentImprovementSerializer)
-    def improve(self, request, pk=None):
-        """
-        Apply improvements to a specific document
-        """
-        document = self.get_object()
-        
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        # Trigger improvement processing
-        improve_document.delay(
-            document_id=pk, 
-            improvement_level=serializer.validated_data.get('improvement_level'),
-            focus_areas=serializer.validated_data.get('focus_areas', [])
-        )
-        
-        return Response({
-            'document_id': pk,
-            'status': 'Improvement processing started'
-        }, status=status.HTTP_202_ACCEPTED)
-
-@shared_task
-def process_document(document_id):
-    """
-    Celery task to process uploaded document
-    """
-    try:
-        # Retrieve document
-        doc_version = DocumentVersion.objects.get(id=document_id)
-        
-        # Initialize processor
-        processor = DocumentProcessor()
-        
-        # Extract text from uploaded file
-        doc_version.original_text = processor.extract_text_from_file(
-            os.path.join(settings.MEDIA_ROOT, str(doc_version.original_file))
-        )
-        
-        # Analyze document
-        analysis_results = processor.suggest_improvements(doc_version.original_text)
-        
-        # Store suggestions
-        doc_version.grammar_suggestions = analysis_results.get('grammar')
-        doc_version.style_suggestions = analysis_results.get('style_suggestions')
-        doc_version.clarity_suggestions = analysis_results.get('readability')
-        
-        doc_version.status = 'completed'
-        doc_version.save()
-        
-        return str(doc_version.id)
-    
-    except Exception as e:
-        # Update status to failed
-        doc_version.status = 'failed'
-        doc_version.save()
-        raise
-
-@shared_task
-def improve_document(document_id, improvement_level='basic', focus_areas=None):
-    """
-    Celery task to improve document
-    """
-    try:
-        # Retrieve document
-        doc_version = DocumentVersion.objects.get(id=document_id)
-        
-        # Initialize processor
-        processor = DocumentProcessor()
-        
-        # Get suggestions from previous processing
-        suggestions = {
-            'grammar': doc_version.grammar_suggestions,
-            'style_suggestions': doc_version.style_suggestions
-        }
-        
-        # Apply improvements
-        improved_text = processor.apply_improvements(
-            doc_version.original_text, 
-            suggestions
-        )
-        
-        # Save improved text
-        doc_version.improved_text = improved_text
-        
-        # Apply organization template
-        improved_file_path = apply_organization_template(
-            improved_text, 
-            f'{settings.MEDIA_ROOT}/improved_documents/{doc_version.id}.docx'
-        )
-        
-        # Update document with improved file
-        doc_version.improved_file = improved_file_path
-        doc_version.processed_at = timezone.now()
-        doc_version.save()
-        
-        return str(doc_version.id)
-    
-    except Exception as e:
-        # Log error
-        raise
+    lookup_field = 'id'

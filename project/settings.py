@@ -36,7 +36,7 @@ DJANGO_APPS = [
 ]
 
 LOCAL_APPS = [
-    # "core",
+    "core",
     "accounts",
 ]
 
@@ -271,3 +271,5 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",  
     "http://127.0.0.1:8000",
 ]
+
+DOCUMENT_TEMPLATES_DIR = os.path.join(BASE_DIR, 'document_templates')
