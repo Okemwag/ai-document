@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -16,7 +17,17 @@ export default function Header() {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  
+const router = useRouter();
+
+const handleLogout = () => {
+    console.log("clicked")
+    // Remove from localStorage
+    localStorage.removeItem('authToken')
+    document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+    
+    router.push('/sign-in')
+  }
+
 
   return (
     <header className="bg-white shadow-md">
@@ -48,7 +59,7 @@ export default function Header() {
                 >
                   Dashboard
                 </Link>
-                <button className="text-red-500 hover:text-red-700">
+                <button onClick={handleLogout} className="text-red-500 hover:text-red-700">
                   Logout
                 </button>
               </>
@@ -124,7 +135,7 @@ export default function Header() {
                   >
                     Dashboard
                   </Link>
-                  <button className="text-red-500 hover:text-red-700 text-left">
+                  <button onClick={handleLogout} className="text-red-500 hover:text-red-700 text-left">
                     Logout
                   </button>
                 </>
