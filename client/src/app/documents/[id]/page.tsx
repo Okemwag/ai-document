@@ -1,5 +1,5 @@
 "use client";
-
+import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 
 
@@ -25,18 +25,20 @@ interface Document {
   versions: DocumentVersion[];
 }
 
-export default function ComparisonView({ documentId }: ComparisonViewProps) {
+export default function ComparisonView({ params }: { params: { id: string } }) {
+  const { id } = useParams();
   const [doc, setDoc] = useState<Document | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const fetchDocument = async () => {
+    console.log(id)
     const DEV_API_URL = process.env.NEXT_PUBLIC_DEV_BASE_API_URL;
     console.log(DEV_API_URL);
     try {
-      const response = await fetch(`${DEV_API_URL}/api/documents/${documentId}`, {
+      const response = await fetch(`${DEV_API_URL}/api/documents/${id}`, {
         headers: {
-          "Authorization": `Bearer ${localStorage.getItem('access_token')}`
+          "Authorization": `Bearer ${localStorage.getItem('authToken')}`
         }
       });
 
@@ -56,10 +58,10 @@ export default function ComparisonView({ documentId }: ComparisonViewProps) {
   };
 
   useEffect(() => {
-    if (documentId) {
+    if (id) {
       fetchDocument();
     }
-  }, [documentId]);
+  }, [id]);
 
   const getVersionContent = (type: string) => {
     if (!doc) return "";  // Handle case if `doc` is null
@@ -73,10 +75,10 @@ export default function ComparisonView({ documentId }: ComparisonViewProps) {
   const handleExport = async () => {
     try {
       const DEV_API_URL = process.env.NEXT_PUBLIC_DEV_BASE_API_URL;
-      const response = await fetch(`${DEV_API_URL}/api/documents/${documentId}/export`, {
+      const response = await fetch(`${DEV_API_URL}/api/documents/${id}/export/`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${localStorage.getItem('access_token')}`
+          "Authorization": `Bearer ${localStorage.getItem('authToken')}`
         }
       });
 

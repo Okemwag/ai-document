@@ -176,10 +176,6 @@ class DocumentExportSerializer(serializers.Serializer):
     - Version verification
     - Export configuration options
     """
-
-    document_id = serializers.UUIDField(
-        required=True, help_text="UUID of the document to export"
-    )
     version_type = serializers.ChoiceField(
         choices=DocumentVersion.VERSION_TYPES,
         default="improved",
@@ -228,9 +224,14 @@ class DocumentExportSerializer(serializers.Serializer):
 
     def validate(self, data):
         """Verify the specified version exists"""
+        document = self.context["document"]
+
+        if document.status != "completed":
+            raise ValidationError("Document must be in completed state before export")
+
         try:
             version = DocumentVersion.objects.get(
-                document_id=data["document_id"], version_type=data["version_type"]
+                document=document, version_type=data["version_type"]
             )
             data["version"] = version
             return data
@@ -238,6 +239,7 @@ class DocumentExportSerializer(serializers.Serializer):
             raise ValidationError(
                 f"{data['version_type']} version not found for document"
             )
+
 
     def _get_available_templates(self):
         """Discover available templates in templates directory"""
@@ -267,7 +269,6 @@ class DocumentExportSerializer(serializers.Serializer):
     class Meta:
         ref_name = "DocumentExport"
         extra_kwargs = {
-            "document_id": {"write_only": True},
             "version_type": {"write_only": True},
         }
 

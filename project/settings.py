@@ -267,6 +267,6 @@ CORS_ORIGIN_WHITELIST = [
     'http://localhost:3000',
 ]
 
-DOCUMENT_TEMPLATES_DIR = os.path.join(BASE_DIR, "document_templates")
+DOCUMENT_TEMPLATES_DIR = "document_templates"
 
 USE_GPU = False

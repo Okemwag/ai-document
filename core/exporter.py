@@ -1,3 +1,7 @@
+import os
+import shutil
+from django.conf import settings
+from datetime import datetime, timedelta
 import tempfile
 from pathlib import Path
 
@@ -9,7 +13,16 @@ from docx.shared import Pt, RGBColor
 class ExportResult:
     def __init__(self, filepath):
         self.filepath = filepath
+        self._expiry = datetime.utcnow() + timedelta(hours=1)
 
+    @property
+    def url(self):
+        filename = Path(self.filepath).name
+        return f"/media/exports/{filename}"
+    
+    @property
+    def expiry(self):
+        return self._expiry
     def __str__(self):
         return f"Exported file at: {self.filepath}"
 
@@ -80,10 +93,10 @@ class DocumentExporter:
                 if f"{{{{{key}}}}}" in paragraph.text:
                     paragraph.text = paragraph.text.replace(f"{{{{{key}}}}}", value)
 
+
+
     def generate(self):
-        output = tempfile.NamedTemporaryFile(
-            delete=False, suffix=f".{self.output_format}"
-        )
+        output = tempfile.NamedTemporaryFile(delete=False, suffix=f".{self.output_format}")
 
         if self.text_content:
             self._apply_template_style(self.text_content, output.name)
@@ -94,4 +107,11 @@ class DocumentExporter:
         else:
             raise ValueError("Either template_path or text_content must be provided.")
 
-        return ExportResult(output.name)
+        # ✅ Move to MEDIA_ROOT/exports
+        export_dir = os.path.join(settings.MEDIA_ROOT, "exports")
+        os.makedirs(export_dir, exist_ok=True)
+
+        final_path = os.path.join(export_dir, Path(output.name).name)
+        shutil.move(output.name, final_path)
+
+        return ExportResult(final_path)
