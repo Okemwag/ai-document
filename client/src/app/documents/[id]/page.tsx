@@ -25,7 +25,7 @@ interface Document {
   versions: DocumentVersion[];
 }
 
-export default function ComparisonView({ params }: { params: { id: string } }) {
+export default function ComparisonView() {
   const { id } = useParams();
   const [doc, setDoc] = useState<Document | null>(null);
   const [loading, setLoading] = useState(true);

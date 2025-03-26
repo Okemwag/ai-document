@@ -3,11 +3,13 @@ import React, { useState } from "react";
 import axios from "axios";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { signUpSchema } from "@/utils/validation";
 
 const SignUpForm = () => {
+  const navigate = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
   const {
@@ -31,6 +33,7 @@ const SignUpForm = () => {
     confirmPassword?: string;
   }
 
+
   const onSubmit = async (data: SignUpFormData) => {
     const signUpPayload: SignUpFormData = {
       username: data.username,
@@ -46,6 +49,10 @@ const SignUpForm = () => {
         `${DEV_API_URL}/api/accounts/register/`,
         signUpPayload
       );
+      if (response.status === 201 ) {
+        navigate.push("/sign-in")
+
+      }
       console.log("Registration response data:", response.data);
     } catch (error) {
       console.error("Sign up failed:", error);
