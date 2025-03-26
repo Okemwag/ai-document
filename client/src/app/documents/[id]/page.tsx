@@ -36,7 +36,7 @@ export default function ComparisonView({ documentId }: ComparisonViewProps) {
   const fetchDocument = async () => {
     const DEV_API_URL = process.env.NEXT_PUBLIC_DEV_BASE_API_URL;   
     try {
-      const response = await fetch(`/api/documents/${documentId}`);
+      const response = await fetch(`${DEV_API_URL}/api/documents/${documentId}`);
 
       if (!response.ok) {
         throw new Error("Failed to fetch document");

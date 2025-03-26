@@ -88,9 +88,9 @@ export default function DocumentUpload() {
       }
 
       const data = await response.json();
-
+      console.log(data.id);
       // Redirect to the document view page
-      router.push(`/documents/${data.documentId}`);
+      router.push(`/documents/${data.id}`);
     } catch (err) {
       console.error("Error uploading document:", err);
       setError("Failed to upload document. Please try again.");

@@ -55,25 +55,16 @@ class DocumentVersionSerializer(serializers.ModelSerializer):
 
     def _extract_file_content(self, file):
         """Extract text content from uploaded file"""
+        # Implement file content extraction (e.g., using python-docx for .docx)
         try:
-            # Handle .txt files
             if file.name.endswith('.txt'):
                 return file.read().decode('utf-8')
-
-            # Handle .docx files
             elif file.name.endswith('.docx'):
+                from docx import Document
                 doc = Document(file)
                 return "\n".join([para.text for para in doc.paragraphs])
-
-            # Handle .pdf files
-            elif file.name.endswith('.pdf'):
-                reader = PdfReader(file)
-                raw_content = "\n".join([page.extract_text() for page in reader.pages])
-                return raw_content
-
             else:
                 raise serializers.ValidationError("Unsupported file format")
-        
         except Exception as e:
             raise serializers.ValidationError(f"File processing failed: {str(e)}")
 
