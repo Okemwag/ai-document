@@ -33,7 +33,7 @@ const DashboardClient = ({ authToken }: DashboardClientProps) => {
 
   const fetchDocuments = async () => {
     try {
-      const response = await fetch("/api/documents", {
+      const response = await fetch("http://localhost:8000/api/documents", {
         headers: {
           Authorization: `Bearer ${authToken}`,
         },

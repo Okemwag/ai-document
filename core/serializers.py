@@ -63,6 +63,10 @@ class DocumentVersionSerializer(serializers.ModelSerializer):
                 from docx import Document
                 doc = Document(file)
                 return "\n".join([para.text for para in doc.paragraphs])
+            elif file.name.endswith('.pdf'):
+                reader = PdfReader(file)
+                raw_content = "\n".join([page.extract_text() for page in reader.pages])
+                return raw_content
             else:
                 raise serializers.ValidationError("Unsupported file format")
         except Exception as e:

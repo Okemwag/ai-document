@@ -271,3 +271,5 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 DOCUMENT_TEMPLATES_DIR = os.path.join(BASE_DIR, 'document_templates')
+
+USE_GPU = False
