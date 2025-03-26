@@ -12,13 +12,16 @@ interface DocumentVersion {
   version_type: string;
   content: string;
   file: string;
+  suggestions?: Record<string, any>;
+  created_at: string;
 }
 
 interface Document {
   id: string;
+  user: number;
   title: string;
-  uploaded_at: string;
   status: string;
+  uploaded_at: string;
   versions: DocumentVersion[];
 }
 
@@ -28,7 +31,7 @@ export default function ComparisonView({ documentId }: ComparisonViewProps) {
   const [error, setError] = useState("");
 
   const fetchDocument = async () => {
-    const DEV_API_URL = "http://localhost:8000";
+    const DEV_API_URL = process.env.NEXT_PUBLIC_DEV_BASE_API_URL;
     console.log(DEV_API_URL);
     try {
       const response = await fetch(`${DEV_API_URL}/api/documents/${documentId}`, {

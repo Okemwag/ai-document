@@ -15,7 +15,14 @@ class ExportResult:
 
 
 class DocumentExporter:
-    def __init__(self, version, template_path=None, text_content=None, output_format='docx', include_comments=False):
+    def __init__(
+        self,
+        version,
+        template_path=None,
+        text_content=None,
+        output_format="docx",
+        include_comments=False,
+    ):
         self.version = version
         self.template_path = template_path
         self.text_content = text_content
@@ -25,9 +32,9 @@ class DocumentExporter:
     def _apply_template_style(self, text, output_path):
         doc = Document()
 
-        style = doc.styles['Normal']
+        style = doc.styles["Normal"]
         font = style.font
-        font.name = 'Calibri'
+        font.name = "Calibri"
         font.size = Pt(11)
 
         header = doc.sections[0].header
@@ -45,7 +52,7 @@ class DocumentExporter:
         title.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
         title.space_after = Pt(12)
 
-        for para in text.split('\n'):
+        for para in text.split("\n"):
             if para.strip():
                 p = doc.add_paragraph(para.strip())
                 p.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
@@ -63,9 +70,9 @@ class DocumentExporter:
 
     def _populate_template(self, doc):
         data = {
-            'title': f"Exported Document v{self.version}",
-            'author': 'Document Export System',
-            'body': 'This is the body content of the document.'
+            "title": f"Exported Document v{self.version}",
+            "author": "Document Export System",
+            "body": "This is the body content of the document.",
         }
 
         for paragraph in doc.paragraphs:
@@ -74,7 +81,9 @@ class DocumentExporter:
                     paragraph.text = paragraph.text.replace(f"{{{{{key}}}}}", value)
 
     def generate(self):
-        output = tempfile.NamedTemporaryFile(delete=False, suffix=f".{self.output_format}")
+        output = tempfile.NamedTemporaryFile(
+            delete=False, suffix=f".{self.output_format}"
+        )
 
         if self.text_content:
             self._apply_template_style(self.text_content, output.name)

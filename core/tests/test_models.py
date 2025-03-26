@@ -8,16 +8,17 @@ from ..models import DocumentVersion
 
 User = get_user_model()
 
+
 class DocumentVersionModelTest(TestCase):
     def setUp(self):
         # Create test user
-        self.user = User.objects.create_user(username='testuser', password='password')
+        self.user = User.objects.create_user(username="testuser", password="password")
 
         # Create a sample file
         self.sample_file = SimpleUploadedFile(
-            "test.docx", 
-            b"Test content", 
-            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            "test.docx",
+            b"Test content",
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         )
 
         # Create a DocumentVersion instance
@@ -25,7 +26,7 @@ class DocumentVersionModelTest(TestCase):
             user=self.user,
             original_file=self.sample_file,
             original_text="This is a test document.",
-            status='processing'
+            status="processing",
         )
 
     def test_document_creation(self):
@@ -34,36 +35,35 @@ class DocumentVersionModelTest(TestCase):
         """
         self.assertEqual(self.document.user, self.user)
         self.assertEqual(self.document.original_text, "This is a test document.")
-        self.assertEqual(self.document.status, 'processing')
+        self.assertEqual(self.document.status, "processing")
 
     def test_document_default_status(self):
         """
         Test that default status is 'pending'
         """
         new_document = DocumentVersion.objects.create(
-            user=self.user,
-            original_file=self.sample_file
+            user=self.user, original_file=self.sample_file
         )
-        self.assertEqual(new_document.status, 'pending')
+        self.assertEqual(new_document.status, "pending")
 
     def test_document_status_choices(self):
         """
         Test that status choices are enforced
         """
-        self.document.status = 'completed'
+        self.document.status = "completed"
         self.document.save()
-        self.assertEqual(self.document.status, 'completed')
+        self.assertEqual(self.document.status, "completed")
 
         with self.assertRaises(ValidationError):
-            self.document.status = 'invalid_status'
-            self.document.full_clean() 
+            self.document.status = "invalid_status"
+            self.document.full_clean()
 
     def test_file_upload(self):
         """
         Test that the file is uploaded and accessible
         """
         self.assertIsNotNone(self.document.original_file)
-        self.assertTrue(self.document.original_file.name.startswith('uploads/'))
+        self.assertTrue(self.document.original_file.name.startswith("uploads/"))
 
     def test_model_string_representation(self):
         """
@@ -78,7 +78,9 @@ class DocumentVersionModelTest(TestCase):
         """
         self.document.grammar_suggestions = {"suggestion_1": "Fix punctuation"}
         self.document.save()
-        self.assertEqual(self.document.grammar_suggestions["suggestion_1"], "Fix punctuation")
+        self.assertEqual(
+            self.document.grammar_suggestions["suggestion_1"], "Fix punctuation"
+        )
 
     def test_processed_at(self):
         """

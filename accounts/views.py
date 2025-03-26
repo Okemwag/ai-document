@@ -10,9 +10,13 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import Profile
-from .serializers import (ProfileSerializer, TokenSerializer,
-                          UserLoginSerializer, UserRegisterSerializer,
-                          UserSerializer)
+from .serializers import (
+    ProfileSerializer,
+    TokenSerializer,
+    UserLoginSerializer,
+    UserRegisterSerializer,
+    UserSerializer,
+)
 from .services import GoogleRawLoginFlowService
 from .utils import send_invite_email
 

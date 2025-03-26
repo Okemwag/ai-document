@@ -5,8 +5,12 @@ from django.test import RequestFactory, TestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.models import Profile
-from accounts.serializers import (ProfileSerializer, TokenSerializer,
-                                  UserLoginSerializer, UserRegisterSerializer)
+from accounts.serializers import (
+    ProfileSerializer,
+    TokenSerializer,
+    UserLoginSerializer,
+    UserRegisterSerializer,
+)
 from accounts.types import GenericToken
 
 
@@ -60,7 +64,9 @@ class UserLoginSerializerTest(TestCase):
 class UserRegisterSerializerTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(
-            username="existinguser", email="existing@example.com", password="testpass123"
+            username="existinguser",
+            email="existing@example.com",
+            password="testpass123",
         )
 
     def test_valid_registration(self):
@@ -105,5 +111,3 @@ class ProfileSerializerTest(TestCase):
         mock_get_profile_picture.return_value = None
         serializer = ProfileSerializer(instance=self.profile)
         self.assertIsNone(serializer.data["profile_picture"])
-
-

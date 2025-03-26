@@ -33,19 +33,35 @@ const DashboardClient = ({ authToken }: DashboardClientProps) => {
 
   const fetchDocuments = async () => {
     try {
-      const response = await fetch("http://localhost:8000/api/documents", {
+      const response = await fetch("http://localhost:8000/api/documents/", {
         headers: {
           Authorization: `Bearer ${authToken}`,
+          Accept: "application/json",
         },
       });
-
+  
       if (!response.ok) {
         throw new Error("Failed to fetch documents");
       }
-
+  
       const data = await response.json();
-      setDocuments(data.documents);
-      setStats(data.stats);
+  
+      setDocuments(data);
+  
+      // Dynamically build stats from the documents array
+      const improvementsApplied = data.filter((doc: any) =>
+        doc.versions?.some((v: any) => v.version_type === "improved")
+      ).length;
+  
+      setStats({
+        totalDocuments: data.length,
+        improvementsApplied,
+        recentActivity: data.slice(0, 5).map((doc: any) => ({
+          type: "upload",
+          description: `Uploaded ${doc.title}`,
+          timestamp: doc.uploaded_at,
+        })),
+      });
     } catch (err) {
       console.error("Error fetching documents:", err);
       setError("Failed to load documents. Please try again.");
@@ -53,6 +69,7 @@ const DashboardClient = ({ authToken }: DashboardClientProps) => {
       setLoading(false);
     }
   };
+  
 
   useEffect(() => {
     fetchDocuments();

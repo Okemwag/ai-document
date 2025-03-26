@@ -13,6 +13,7 @@ from .types import GenericToken
 
 logger = logging.getLogger(__name__)
 
+
 class TokenSerializer(serializers.Serializer):
     access = serializers.CharField(required=False, read_only=True)
     refresh = serializers.CharField(required=True, write_only=True)
@@ -22,6 +23,7 @@ class TokenSerializer(serializers.Serializer):
         token = RefreshToken(data["refresh"])
         data["access"] = str(token.access_token)
         return data
+
 
 class UserLoginSerializer(serializers.Serializer):
     username = serializers.CharField(required=True)
@@ -47,6 +49,7 @@ class UserLoginSerializer(serializers.Serializer):
     def get_token(self, obj) -> GenericToken:
         token = RefreshToken.for_user(self.user)
         return GenericToken(access=str(token.access_token), refresh=str(token))
+
 
 class UserRegisterSerializer(serializers.Serializer):
     username = serializers.CharField(required=True)
@@ -77,6 +80,7 @@ class UserRegisterSerializer(serializers.Serializer):
         token = RefreshToken.for_user(self.user)
         return GenericToken(access=str(token.access_token), refresh=str(token))
 
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -87,6 +91,7 @@ class UserSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
         ]
+
 
 class ProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
