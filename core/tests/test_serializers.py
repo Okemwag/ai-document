@@ -1,11 +1,13 @@
 import os
+
 os.environ['DJANGO_TEST'] = 'True'
 
-from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase
+
 from ..models import DocumentVersion
-from ..serializers import DocumentVersionSerializer, DocumentUploadSerializer
+from ..serializers import DocumentUploadSerializer, DocumentVersionSerializer
 from ..views import process_document
 
 User = get_user_model()

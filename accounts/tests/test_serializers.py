@@ -1,14 +1,12 @@
-from django.contrib.auth.models import User
-from django.test import TestCase, RequestFactory
-from rest_framework_simplejwt.tokens import RefreshToken
-from accounts.models import Profile
-from accounts.serializers import (
-    TokenSerializer,
-    UserLoginSerializer,
-    UserRegisterSerializer,
-    ProfileSerializer,
-)
 from unittest.mock import patch
+
+from django.contrib.auth.models import User
+from django.test import RequestFactory, TestCase
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from accounts.models import Profile
+from accounts.serializers import (ProfileSerializer, TokenSerializer,
+                                  UserLoginSerializer, UserRegisterSerializer)
 from accounts.types import GenericToken
 
 

@@ -69,7 +69,7 @@ export default function DocumentUpload() {
 
     // Create form data
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("original_file", file);
 
     // Get auth token from local storage
     const resourceAuthToken = localStorage.getItem("authToken");

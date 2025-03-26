@@ -1,18 +1,19 @@
+import os
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-from django.shortcuts import get_object_or_404
+from django.core.exceptions import ValidationError
+
+from .exporter import DocumentExporter
 from .models import Document, DocumentVersion
-from .serializers import (
-    DocumentSerializer,
-    DocumentVersionSerializer,
-    DocumentImprovementSerializer,
-    DocumentExportSerializer
-)
+from .serializers import (DocumentExportSerializer,
+                          DocumentImprovementSerializer, DocumentSerializer,
+                          DocumentVersionSerializer)
 from .services import DocumentProcessingService
 from .tasks import process_document
-from .exporter import DocumentExporter
+
 
 class DocumentUploadView(generics.CreateAPIView):
     """
@@ -26,10 +27,23 @@ class DocumentUploadView(generics.CreateAPIView):
     def perform_create(self, serializer):
         document = serializer.save(user=self.request.user)
         
+        # Get the file from the first version
+        first_version = document.versions.first()
+        if not first_version:
+            raise ValueError("No document version created")
+        
+        # Validate file extension
+        valid_extensions = ['.pdf', '.docx', '.txt']
+        _, file_extension = os.path.splitext(first_version.file.name)
+        file_extension = file_extension.lower()
+        
+        if file_extension not in valid_extensions:
+            raise ValidationError("Unsupported file format")
+
         # Process synchronously for small files (<1MB), async for larger
-        if document.original_file.size < 1024 * 1024:
+        if first_version.file.size < 1024 * 1024:
             service = DocumentProcessingService()
-            result = service.process_document(document.original_file.path)
+            result = service.process_document(first_version.file.path)
             if result['status'] == 'success':
                 DocumentVersion.objects.create(
                     document=document,
@@ -45,7 +59,6 @@ class DocumentUploadView(generics.CreateAPIView):
             document.save()
 
         return document
-
 class DocumentRetrieveView(generics.RetrieveAPIView):
     """
     GET /documents/{id}

@@ -1,12 +1,8 @@
 from django.urls import path
-from .views import (
-    DocumentUploadView,
-    DocumentRetrieveView,
-    DocumentImproveView,
-    DocumentExportView,
-    DocumentStatusView,
-    DocumentVersionRetrieveView
-)
+
+from .views import (DocumentExportView, DocumentImproveView,
+                    DocumentRetrieveView, DocumentStatusView,
+                    DocumentUploadView, DocumentVersionRetrieveView)
 
 urlpatterns = [
     # Document upload and processing

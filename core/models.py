@@ -1,4 +1,5 @@
 import uuid
+
 from django.contrib.auth import get_user_model
 from django.db import models
 
@@ -35,16 +36,16 @@ class DocumentVersion(models.Model):
     Model to store different versions of a document with improvements
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='versions')
+    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='versions', null=True, blank=True)
     
     VERSION_TYPES = [
         ('original', 'Original'),
         ('improved', 'Improved'),
         ('exported', 'Exported')
     ]
-    version_type = models.CharField(max_length=20, choices=VERSION_TYPES)
+    version_type = models.CharField(max_length=20, choices=VERSION_TYPES, default='original')
     
-    content = models.TextField()
+    content = models.TextField(default="No content Provided")
     file = models.FileField(upload_to='document_versions/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     

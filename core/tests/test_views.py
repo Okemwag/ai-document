@@ -1,13 +1,14 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase
+from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
-from django.urls import reverse
-from ..models import DocumentVersion
-from unittest.mock import patch
-from ..views import process_document, improve_document
-from django.test import TestCase
 
+from ..models import DocumentVersion
+from ..views import improve_document, process_document
 
 User = get_user_model()
 

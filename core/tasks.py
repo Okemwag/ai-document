@@ -1,14 +1,13 @@
 import logging
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
-from celery import shared_task, group, chain
+from celery import chain, group, shared_task
 from celery.result import AsyncResult, GroupResult
 
-from django.conf import settings
-from django.core.files.storage import default_storage
 
 from .models import Document, DocumentVersion
-from .utils import read_document_content, clean_text
+from .utils import clean_text, read_document_content
+from .services import DocumentProcessingService
 
 logger = logging.getLogger(__name__)
 
@@ -81,9 +80,9 @@ def analyze_document_task(self, document_data: Dict[str, Any]) -> Dict[str, Any]
         Dict with analysis results
     """
     try:
+        import language_tool_python
         import spacy
-        import language_tool_python 
-        
+
         # Load models
         nlp = spacy.load('en_core_web_sm')
         grammar_tool = language_tool_python.LanguageTool('en-US')
@@ -292,3 +291,13 @@ def process_multiple_documents(document_ids: List[str]) -> GroupResult:
     
     # Execute the group of tasks
     return processing_tasks.apply_async()
+
+
+@shared_task(bind=True, max_retries=3)
+def process_document_task(self, document_path):
+    """Celery task wrapper for async processing"""
+    service = DocumentProcessingService()
+    try:
+        return service.process_document(document_path, async_mode=False)
+    except Exception as e:
+        self.retry(exc=e, countdown=60)

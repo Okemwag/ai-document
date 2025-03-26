@@ -1,12 +1,13 @@
 import logging
-from celery import shared_task
-from typing import Dict, Any, List
-from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
+from typing import Any, Dict, List
 
+from celery import shared_task
 from django.conf import settings
 from django.core.files.base import File
 from django.core.files.storage import default_storage
+from PyPDF2 import PdfReader
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +24,8 @@ class DocumentProcessingService:
     def _validate_environment(self):
         """Check required dependencies and environment variables"""
         try:
-            import spacy
             import language_tool_python
+            import spacy
             from transformers import pipeline
         except ImportError as e:
             raise ImportError(f"Missing required libraries: {e}")
@@ -100,8 +101,15 @@ class DocumentProcessingService:
     def _read_and_clean(self, document_path: str) -> str:
         """Read and preprocess document content"""
         try:
-            with default_storage.open(document_path) as f:
-                raw_content = f.read().decode('utf-8')
+            with default_storage.open(document_path, 'rb') as f:
+                # Check file extension
+                if document_path.lower().endswith('.pdf'):
+                    reader = PdfReader(f)
+                    raw_content = "\n".join([page.extract_text() for page in reader.pages])
+                else:
+                    # Handle other file types (txt, docx)
+                    raw_content = f.read().decode('utf-8')
+                
                 return self._clean_text(raw_content)
         except Exception as e:
             logger.error(f"Failed to read document: {str(e)}")
@@ -223,13 +231,3 @@ class DocumentProcessingService:
         # Implement based on syllable count or domain-specific terms
         return []
 
-
-# Celery tasks.py (companion file)
-@shared_task(bind=True, max_retries=3)
-def process_document_task(self, document_path):
-    """Celery task wrapper for async processing"""
-    service = DocumentProcessingService()
-    try:
-        return service.process_document(document_path, async_mode=False)
-    except Exception as e:
-        self.retry(exc=e, countdown=60)

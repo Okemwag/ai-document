@@ -1,6 +1,7 @@
-from docx import Document
 import tempfile
 from pathlib import Path
+
+from docx import Document
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.shared import Pt, RGBColor
 

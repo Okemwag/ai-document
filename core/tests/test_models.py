@@ -1,9 +1,10 @@
-from django.test import TestCase
 from django.contrib.auth import get_user_model
-from django.core.files.uploadedfile import SimpleUploadedFile
-from ..models import DocumentVersion
-from django.utils.timezone import now
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase
+from django.utils.timezone import now
+
+from ..models import DocumentVersion
 
 User = get_user_model()
 
