@@ -20,7 +20,8 @@ export default function Header() {
 const router = useRouter();
 
 const handleLogout = () => {
-    console.log("clicked")
+  const authToken =
+  typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
     // Remove from localStorage
     localStorage.removeItem('authToken')
     document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'

@@ -16,7 +16,7 @@ from .serializers import (
     DocumentVersionSerializer,
 )
 from .services import DocumentProcessingService
-from .tasks import process_document
+from .tasks import process_document, process_document_task
 
 
 class DocumentUploadView(generics.CreateAPIView):

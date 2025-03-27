@@ -31,6 +31,9 @@ const SignInForm = () => {
   }
 
   const onSubmit = async (data: SignInFormData) => {
+    const authToken =
+      typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+      
     const signInPayload: SignInFormData = {
       username: data.username,
       email: data.email,

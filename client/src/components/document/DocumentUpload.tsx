@@ -57,6 +57,9 @@ export default function DocumentUpload() {
   };
 
   const handleSubmit = async (e: { preventDefault: () => void }) => {
+    const authToken =
+      typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+      
     e.preventDefault();
     const DEV_API_URL = process.env.NEXT_PUBLIC_DEV_BASE_API_URL;
 

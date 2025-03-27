@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 interface DocumentVersion {
   id: string;
   version_type: string;
-  content: string | Record<string, any>; // Allow both string and object content
+  content: string | Record<string, any>;
   file: string;
   suggestions?: Record<string, any>;
   created_at: string;
@@ -51,6 +51,8 @@ export default function ComparisonView() {
   };
 
   useEffect(() => {
+    const authToken =
+      typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
     if (id) {
       fetchDocument();
     }
