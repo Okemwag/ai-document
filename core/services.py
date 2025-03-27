@@ -61,7 +61,7 @@ class DocumentProcessingService:
         logger.info("Loading paraphrase model...")
         return pipeline(
             "text2text-generation",
-            model="facebook/bart-tiny-random",
+            model="t5-small",
             device=1,
         )
 
@@ -145,7 +145,7 @@ class DocumentProcessingService:
                     paraphrased.append(result[0]["generated_text"])
                 except Exception as e:
                     logger.warning(f"Paraphrase failed for chunk: {str(e)}")
-                    paraphrased.append(chunk)  
+                    paraphrased.append(chunk)  # Fallback to original
 
             return " ".join(paraphrased)
         except Exception as e:
