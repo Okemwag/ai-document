@@ -33,7 +33,7 @@ const DashboardClient = ({ authToken }: DashboardClientProps) => {
 
   const fetchDocuments = async () => {
     try {
-      const response = await fetch("http://localhost:8000/api/documents/", {
+      const response = await fetch("https://ada.share-hub.co/api/documents/", {
         headers: {
           Authorization: `Bearer ${authToken}`,
           Accept: "application/json",

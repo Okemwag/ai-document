@@ -61,8 +61,8 @@ class DocumentProcessingService:
         logger.info("Loading paraphrase model...")
         return pipeline(
             "text2text-generation",
-            model="t5-small",
-            device=0 if settings.USE_GPU else -1,
+            model="facebook/bart-tiny-random",
+            device=1,
         )
 
     def process_document(
@@ -145,7 +145,7 @@ class DocumentProcessingService:
                     paraphrased.append(result[0]["generated_text"])
                 except Exception as e:
                     logger.warning(f"Paraphrase failed for chunk: {str(e)}")
-                    paraphrased.append(chunk)  # Fallback to original
+                    paraphrased.append(chunk)  
 
             return " ".join(paraphrased)
         except Exception as e:
